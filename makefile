@@ -3,7 +3,7 @@ ASPARAMS = --32
 LDPARAMS = -melf_i386
 MKRESCUE = $(shell command -v grub2-mkrescue 2>/dev/null || command -v grub-mkrescue 2>/dev/null)
 
-objects = loader.o kernel.o
+objects = loader.o kernel.o gdt.o gdt_asm.o interrupts.o interrupts_asm.o keyboard.o mouse.o pci.o
 
 
 %.o: %.cpp
@@ -11,6 +11,13 @@ objects = loader.o kernel.o
 
 
 %.o: %.s
+	as $(ASPARAMS) -o $@ $<
+
+
+gdt_asm.o: gdt.s
+	as $(ASPARAMS) -o $@ $<
+
+interrupts_asm.o: interrupts.s
 	as $(ASPARAMS) -o $@ $<
 
 

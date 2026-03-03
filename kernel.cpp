@@ -144,6 +144,7 @@ extern "C" void kernelMain(void* multiboot_structure, uint32_t magic)
         }
     }
 
+    VGA::Print("MBR...\n");
     if (ata_drv) {
         MBRParser mbr_parser(ata_drv);
         if (mbr_parser.Read() && mbr_parser.PartitionCount() > 0) {
@@ -155,6 +156,7 @@ extern "C" void kernelMain(void* multiboot_structure, uint32_t magic)
             }
         }
     }
+    VGA::Print("MBR done\n");
 
     RTL8139Driver* nic = nullptr;
     for (int i = 0; i < driver_manager.Count(); i++) {
@@ -194,6 +196,7 @@ extern "C" void kernelMain(void* multiboot_structure, uint32_t magic)
     pit_data.Write(11932 & 0xFF);
     pit_data.Write(11932 >> 8);
 
+    VGA::Print("VGA switch...\n");
     VGA::EnterGraphicsMode();
     Desktop desktop(320, 200, Color::DarkGray);
     Terminal term(0, 0, 320, 200);

@@ -29,8 +29,8 @@ private:
 
     bool master;
 
-    void WaitBSY();
-    void WaitDRQ();
+    bool WaitBSY();
+    bool WaitDRQ();
     uint32_t HandleInterrupt(uint32_t esp) override;
 };
 

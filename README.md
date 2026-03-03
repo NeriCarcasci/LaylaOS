@@ -1,6 +1,6 @@
 # Layla OS
 
-![arch](https://img.shields.io/badge/Architecture-x86__32-i386-blue)
+
 ![boot](https://img.shields.io/badge/Boot-GRUB%20Multiboot-4c8eda)
 ![language](https://img.shields.io/badge/Language-C%2B%2B%20%2B%20Assembly-0b7285)
 ![mode](https://img.shields.io/badge/CPU-Ring0%20%2F%20Ring3-critical)

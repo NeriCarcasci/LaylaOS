@@ -19,28 +19,31 @@ ATADriver::ATADriver(PCIDeviceDescriptor& dev, InterruptManager* interrupts)
 
 ATADriver::~ATADriver() {}
 
-void ATADriver::WaitBSY() {
-    while (command_port.Read() & 0x80);
+bool ATADriver::WaitBSY() {
+    for (uint32_t i = 0; i < 0x100000; i++)
+        if (!(command_port.Read() & 0x80)) return true;
+    return false;
 }
 
-void ATADriver::WaitDRQ() {
-    while (!(command_port.Read() & 0x08));
+bool ATADriver::WaitDRQ() {
+    for (uint32_t i = 0; i < 0x100000; i++)
+        if (command_port.Read() & 0x08) return true;
+    return false;
 }
 
 bool ATADriver::Identify(uint16_t* buffer) {
     device_port.Write(master ? 0xA0 : 0xB0);
     command_port.Write(0xEC);
-    WaitBSY();
-    if (command_port.Read() == 0)
-        return false;
-    WaitDRQ();
+    if (!WaitBSY()) return false;
+    if (command_port.Read() == 0) return false;
+    if (!WaitDRQ()) return false;
     for (int i = 0; i < 256; i++)
         buffer[i] = data_port.Read();
     return true;
 }
 
 bool ATADriver::Read28(uint32_t lba, uint8_t* buf, uint32_t count) {
-    WaitBSY();
+    if (!WaitBSY()) return false;
     device_port.Write((master ? 0xE0 : 0xF0) | ((lba >> 24) & 0x0F));
     error_port.Write(0x00);
     sector_count_port.Write((uint8_t)count);
@@ -50,8 +53,8 @@ bool ATADriver::Read28(uint32_t lba, uint8_t* buf, uint32_t count) {
     command_port.Write(0x20);
 
     for (uint32_t s = 0; s < count; s++) {
-        WaitBSY();
-        WaitDRQ();
+        if (!WaitBSY()) return false;
+        if (!WaitDRQ()) return false;
         uint16_t* dst = (uint16_t*)(buf + s * 512);
         for (int i = 0; i < 256; i++)
             dst[i] = data_port.Read();

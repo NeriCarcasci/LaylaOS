@@ -1,3 +1,37 @@
+.macro ISR_ERRCODE num
+.global isr_\num
+isr_\num:
+    pop %eax
+    pusha
+    push %ds
+    push %es
+    push %fs
+    push %gs
+    push %ss
+    mov %esp, %eax
+    push %eax
+    xor %eax, %eax
+    movb $\num, %al
+    push %eax
+    call _ZN16InterruptManager15HandleInterruptEhj
+    add $8, %esp
+    mov %eax, %esp
+    pop %ss
+    pop %gs
+    pop %fs
+    pop %es
+    pop %ds
+    popa
+    iret
+.endm
+
+ISR_ERRCODE 8
+ISR_ERRCODE 10
+ISR_ERRCODE 11
+ISR_ERRCODE 12
+ISR_ERRCODE 13
+ISR_ERRCODE 14
+
 .macro ISR_NOERRCODE num
 .global isr_\num
 isr_\num:
@@ -44,5 +78,29 @@ ISR_NOERRCODE 47
 .global ignore_interrupt_request
 ignore_interrupt_request:
     pusha
+    popa
+    iret
+
+.global isr_128
+isr_128:
+    pusha
+    push %ds
+    push %es
+    push %fs
+    push %gs
+    push %ss
+    mov %esp, %eax
+    push %eax
+    xor %eax, %eax
+    movb $0x80, %al
+    push %eax
+    call _ZN16InterruptManager15HandleInterruptEhj
+    add $8, %esp
+    mov %eax, %esp
+    pop %ss
+    pop %gs
+    pop %fs
+    pop %es
+    pop %ds
     popa
     iret

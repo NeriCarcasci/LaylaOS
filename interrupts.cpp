@@ -1,10 +1,15 @@
 #include "interrupts.h"
+#include "syscall.h"
+#include "paging.h"
 
 extern "C" {
+    void isr_8();  void isr_10(); void isr_11();
+    void isr_12(); void isr_13(); void isr_14();
     void isr_32();  void isr_33();  void isr_34();  void isr_35();
     void isr_36();  void isr_37();  void isr_38();  void isr_39();
     void isr_40();  void isr_41();  void isr_42();  void isr_43();
     void isr_44();  void isr_45();  void isr_46();  void isr_47();
+    void isr_128();
     void ignore_interrupt_request();
 }
 
@@ -57,6 +62,14 @@ InterruptManager::InterruptManager(uint16_t hw_offset, GlobalDescriptorTable* gd
     for (int i = 0; i < 16; i++)
         SetGate(hw_offset + i, (uint32_t)stubs[i], selector, 0x8E);
 
+    SetGate(8,   (uint32_t)isr_8,   selector, 0x8E);
+    SetGate(10,  (uint32_t)isr_10,  selector, 0x8E);
+    SetGate(11,  (uint32_t)isr_11,  selector, 0x8E);
+    SetGate(12,  (uint32_t)isr_12,  selector, 0x8E);
+    SetGate(13,  (uint32_t)isr_13,  selector, 0x8E);
+    SetGate(14,  (uint32_t)isr_14,  selector, 0x8E);
+    SetGate(128, (uint32_t)isr_128, selector, 0xEF);
+
     pic_master_command.Write(0x11);
     pic_slave_command.Write(0x11);
 
@@ -105,8 +118,18 @@ uint32_t InterruptManager::HandleInterrupt(uint8_t interrupt, uint32_t esp) {
 }
 
 uint32_t InterruptManager::DoHandleInterrupt(uint8_t interrupt, uint32_t esp) {
+    if (interrupt == 14) {
+        uint32_t cr2;
+        __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+        PagingManager::HandlePageFault(cr2, 0);
+        return esp;
+    }
+
     if (handlers[interrupt] != nullptr)
         esp = handlers[interrupt]->HandleInterrupt(esp);
+
+    if (interrupt == 128)
+        return SyscallDispatch(esp);
 
     if (interrupt >= hardware_interrupt_offset
      && interrupt <  hardware_interrupt_offset + 16)

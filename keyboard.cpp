@@ -1,6 +1,7 @@
 #include "keyboard.h"
-
-extern int vga_cursor;
+#include "vga.h"
+#include "gui.h"
+#include "keyboard_buffer.h"
 
 static const char normal_table[88] = {
     0,    0,    '1',  '2',  '3',  '4',  '5',  '6',
@@ -66,19 +67,19 @@ uint32_t KeyboardDriver::HandleInterrupt(uint32_t esp) {
     if (c == 0)
         return esp;
 
-    uint16_t* vga = (uint16_t*)0xB8000;
-
-    if (c == '\b') {
-        if (vga_cursor > 0)
-            vga_cursor--;
-        vga[vga_cursor] = 0x0F00 | ' ';
-    } else if (c == '\n') {
-        vga_cursor = (vga_cursor / 80 + 1) * 80;
-    } else if (c == '\t') {
-        vga_cursor += 4;
-    } else {
-        vga[vga_cursor++] = 0x0F00 | (uint8_t)c;
+    if (VGA::IsGraphicsMode()) {
+        Desktop* desktop = GetActiveDesktop();
+        if (desktop != nullptr) {
+            desktop->OnKeyPress(c);
+            return esp;
+        }
     }
+
+    KeyboardBuffer::Enqueue(c);
+    KeyboardBuffer::WakeWaiters();
+
+    if (!VGA::IsGraphicsMode())
+        VGA::PutChar(c);
 
     return esp;
 }

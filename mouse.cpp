@@ -1,4 +1,5 @@
 #include "mouse.h"
+#include "gui.h"
 
 void MouseDriver::WaitWrite() {
     while (command_port.Read() & 0x02);
@@ -14,8 +15,8 @@ MouseDriver::MouseDriver(InterruptManager* manager)
       command_port(0x64),
       offset(0),
       buttons(0),
-      x(40),
-      y(12)
+      x(160),
+      y(100)
 {
     WaitWrite(); command_port.Write(0xA8);
 
@@ -43,19 +44,11 @@ uint32_t MouseDriver::HandleInterrupt(uint32_t esp) {
 
     int8_t dx = (int8_t)buffer[1];
     int8_t dy = (int8_t)buffer[2];
+    uint8_t btns = buffer[0] & 0x07;
 
-    uint16_t* vga = (uint16_t*)0xB8000;
-    vga[y * 80 + x / 2] = 0x0F00 | ' ';
-
-    x += dx;
-    y -= dy;
-
-    if (x < 0)   x = 0;
-    if (x >= 320) x = 319;
-    if (y < 0)   y = 0;
-    if (y >= 200) y = 199;
-
-    vga[y * 80 + x / 2] = 0x0F00 | '+';
+    Desktop* desktop = GetActiveDesktop();
+    if (desktop != nullptr)
+        desktop->OnMouseMove((int32_t)dx, (int32_t)dy, btns);
 
     return esp;
 }

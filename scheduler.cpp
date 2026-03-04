@@ -31,10 +31,14 @@ void Scheduler::AddProcess(Process* p) {
 }
 
 uint32_t Scheduler::Schedule(uint32_t esp) {
+    int  orig_index = current_index;
+    bool was_running = false;
+
     if (current_index >= 0) {
         Process* cur = processes[current_index];
         if (cur->state == PROCESS_RUNNING) {
-            cur->state        = PROCESS_READY;
+            was_running        = true;
+            cur->state         = PROCESS_READY;
             cur->cpu_state.esp = esp;
         }
     }
@@ -55,6 +59,8 @@ uint32_t Scheduler::Schedule(uint32_t esp) {
         if (next->page_dir)
             PagingManager::SwitchDirectory(next->page_dir);
         tss->SetKernelStack(next->KernelStackTop());
+        if (!was_running && found == orig_index)
+            return esp;
         return next->cpu_state.esp;
     }
 

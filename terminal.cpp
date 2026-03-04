@@ -77,8 +77,6 @@ void Terminal::SetShellOutput(const char* str, uint32_t len) {
 }
 
 void Terminal::Draw() {
-    VGA::DrawRect((uint16_t)x, (uint16_t)y, (uint16_t)w, (uint16_t)h, Color::Black);
-
     for (int r = 0; r < ROWS; r++) {
         for (int c = 0; c < COLS; c++) {
             VGA::DrawChar(

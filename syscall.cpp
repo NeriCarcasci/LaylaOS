@@ -9,8 +9,6 @@
 extern FAT32* global_fat32;
 
 struct SyscallFrame {
-    uint32_t interrupt_number;
-    uint32_t saved_esp;
     uint32_t ss, gs, fs, es, ds;
     uint32_t edi, esi, ebp, esp_ignored;
     uint32_t ebx, edx, ecx, eax;
@@ -143,6 +141,10 @@ uint32_t SyscallDispatch(uint32_t esp) {
         break;
     case 20:
         frame->eax = sys_getpid();
+        break;
+    case 88:
+        __asm__ volatile("out %0, $0x64" : : "a"((uint8_t)0xFE));
+        while (1) __asm__ volatile("hlt");
         break;
     default:
         frame->eax = (uint32_t)-1;

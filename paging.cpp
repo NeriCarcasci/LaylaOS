@@ -29,8 +29,11 @@ PageDirectory::~PageDirectory() {
 }
 
 uint32_t* PageDirectory::GetOrCreatePageTable(uint32_t pd_index, uint32_t flags) {
-    if (phys_dir[pd_index] & PAGE_PRESENT)
+    if (phys_dir[pd_index] & PAGE_PRESENT) {
+        if (flags & PAGE_USER)
+            phys_dir[pd_index] |= PAGE_USER;
         return page_tables[pd_index];
+    }
 
     uint32_t phys = PhysicalMemoryManager::AllocFrame();
     if (!phys) return nullptr;

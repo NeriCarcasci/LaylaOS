@@ -31,7 +31,7 @@ RTL8139Driver::RTL8139Driver(PCIDeviceDescriptor& desc, InterruptManager* interr
 
 void RTL8139Driver::HwReset() {
     cr_port.Write(0x10);
-    while (cr_port.Read() & 0x10);
+    for (int i = 0; i < 0x100000 && (cr_port.Read() & 0x10); i++);
 }
 
 void RTL8139Driver::ReadMAC() {

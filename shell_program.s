@@ -46,6 +46,26 @@ prompt_loop:
     test %eax, %eax
     je do_meminfo
 
+    mov $cmd_uname, %edi
+    call strcmp_prefix
+    test %eax, %eax
+    je do_uname
+
+    mov $cmd_whoami, %edi
+    call strcmp_prefix
+    test %eax, %eax
+    je do_whoami
+
+    mov $cmd_reboot, %edi
+    call strcmp_prefix
+    test %eax, %eax
+    je do_reboot
+
+    mov $cmd_echo, %edi
+    call strcmp_prefix
+    test %eax, %eax
+    je do_echo
+
     mov $4,         %eax
     mov $1,         %ebx
     mov $msg_unkn,  %ecx
@@ -84,6 +104,49 @@ do_meminfo:
     mov $msg_meminfo,  %ecx
     mov $msg_meminfo_len, %edx
     int $0x80
+    jmp prompt_loop
+
+do_uname:
+    mov $4,           %eax
+    mov $1,           %ebx
+    mov $msg_uname,   %ecx
+    mov $msg_uname_len, %edx
+    int $0x80
+    jmp prompt_loop
+
+do_whoami:
+    mov $4,            %eax
+    mov $1,            %ebx
+    mov $msg_whoami,   %ecx
+    mov $msg_whoami_len, %edx
+    int $0x80
+    jmp prompt_loop
+
+do_reboot:
+    mov $88, %eax
+    int $0x80
+    jmp prompt_loop
+
+do_echo:
+    movb line_buf+4, %al
+    cmp $' ', %al
+    jne do_echo_done
+    mov $line_buf+5, %ecx
+    xor %edx, %edx
+10:
+    movb (%ecx,%edx), %al
+    cmp $'\n', %al
+    je 11f
+    cmp $0, %al
+    je 11f
+    inc %edx
+    jmp 10b
+11:
+    inc %edx
+    mov $4, %eax
+    mov $1, %ebx
+    int $0x80
+do_echo_done:
     jmp prompt_loop
 
 do_exit:
@@ -130,8 +193,12 @@ cmd_clear:   .asciz "clear"
 cmd_exit:    .asciz "exit"
 cmd_ls:      .asciz "ls"
 cmd_meminfo: .asciz "meminfo"
+cmd_uname:   .asciz "uname"
+cmd_whoami:  .asciz "whoami"
+cmd_reboot:  .asciz "reboot"
+cmd_echo:    .asciz "echo"
 
-msg_help:    .ascii "Commands: help clear ls meminfo exit\n"
+msg_help:    .ascii "Commands: help clear ls meminfo uname whoami echo reboot exit\n"
 msg_help_len = . - msg_help
 
 msg_clear:
@@ -143,6 +210,12 @@ msg_ls_len   = . - msg_ls
 
 msg_meminfo: .ascii "PMM pool: 128 frames (512KB)\n"
 msg_meminfo_len = . - msg_meminfo
+
+msg_uname:   .ascii "Frodo OS 1.0 i386\n"
+msg_uname_len = . - msg_uname
+
+msg_whoami:  .ascii "root\n"
+msg_whoami_len = . - msg_whoami
 
 msg_bye:     .ascii "Goodbye\n"
 msg_bye_len  = . - msg_bye

@@ -83,7 +83,8 @@ Driver* PeripheralComponentInterconnect::GetDriver(
 {
     if (desc.class_id == 0x01 && desc.subclass_id == 0x01)
         return new ATADriver(desc, interrupts);
-    if (desc.class_id == 0x02 && desc.subclass_id == 0x00)
+    if (desc.class_id == 0x02 && desc.subclass_id == 0x00
+            && desc.vendor_id == 0x10EC && desc.device_id == 0x8139)
         return new RTL8139Driver(desc, interrupts);
     return nullptr;
 }

@@ -9,7 +9,7 @@ objects = loader.o kernel.o gdt.o gdt_asm.o interrupts.o interrupts_asm.o \
           ethernet.o arp.o ipv4.o icmp.o udp.o tcp.o rtl8139.o \
           tss.o syscall.o process.o scheduler.o \
           pmm.o paging.o keyboard_buffer.o terminal.o \
-          shell_program_blob.o
+          boot_anim.o shell_program_blob.o
 
 
 %.o: %.cpp

@@ -13,6 +13,20 @@ Layla OS is a from-scratch 32-bit operating system kernel focused on direct hard
 
 This repository is not a toy app wrapped in OS terms. It boots via GRUB Multiboot, owns descriptor tables and interrupt routing, drives hardware through port I/O, schedules Ring 3 processes, exposes a syscall ABI, and runs a user shell program in protected mode.
 
+## Project Layout
+
+- `src/arch/i386`: boot/entry, descriptor tables, interrupts, linker script, low-level port I/O
+- `src/kernel`: kernel main, process/scheduler, syscalls, keyboard buffer
+- `src/memory`: heap allocator, PMM, paging
+- `src/drivers`: ATA, PCI, keyboard, mouse, RTL8139, driver framework
+- `src/fs`: MBR + FAT32
+- `src/net`: Ethernet/ARP/IPv4/ICMP/UDP/TCP + shared net syscall headers
+- `src/ui`: VGA, GUI, terminal, boot animation
+- `src/user`: Ring 3 shell assembly source
+- `src/common`: common types
+- `docs/theBooklet`: architecture and subsystem notes
+- `tools`: helper scripts (including FAT image population)
+
 ## What This Repo Contains
 
 - A monolithic `i386` kernel in freestanding `C++` + `x86 assembly`.
@@ -179,22 +193,21 @@ Shell commands in current Ring 3 program:
 
 ### 9) Learning Notes / Design Log
 
-- `theBooklet/`: chapter-style docs on GDT, IDT/PIC, port I/O, input devices, and PCI.
+- `docs/theBooklet/`: chapter-style docs on GDT, IDT/PIC, port I/O, input devices, and PCI.
 
 ## Source Map (by Area)
 
 | Area | Primary Files |
 |---|---|
-| Boot | `loader.s`, `linker.ld`, `makefile`, `kernel.cpp` |
-| CPU tables | `gdt.h/.cpp/.s`, `tss.h/.cpp` |
-| Interrupts | `interrupts.h/.cpp/.s`, `port.h` |
-| Memory | `memorymanagement.*`, `allocator.*`, `pmm.*`, `paging.*` |
-| Drivers core | `driver.*`, `pci.*` |
-| Input/UI | `keyboard.*`, `keyboard_buffer.*`, `mouse.*`, `vga.*`, `gui.*`, `terminal.*` |
-| Storage | `ata.*`, `mbr.*`, `fat32.*` |
-| Network | `net.h`, `ethernet.*`, `arp.*`, `ipv4.*`, `icmp.*`, `udp.*`, `tcp.*`, `rtl8139.*` |
-| Processes/syscalls | `process.*`, `scheduler.*`, `syscall.*`, `shell_program.s` |
-| Extra sample | `userprogram.s` |
+| Boot + Arch | `src/arch/i386/*`, `makefile` |
+| Kernel core | `src/kernel/*` |
+| Memory | `src/memory/*` |
+| Drivers | `src/drivers/*` |
+| Storage | `src/fs/*` |
+| Network | `src/net/*` |
+| UI/Input | `src/ui/*`, `src/drivers/keyboard.*`, `src/drivers/mouse.*`, `src/kernel/keyboard_buffer.*` |
+| Ring 3 shell | `src/user/shell_program.s` |
+| Extra sample | `src/user/userprogram.s` |
 
 ## Build and Run
 

@@ -17,10 +17,13 @@ void UDPSocket::HandleIPv4Payload(uint8_t* payload, uint32_t size,
     OnReceive(src, ntohs(hdr->src_port), payload + sizeof(UDPHeader), data_size);
 }
 
-bool UDPSocket::Send(IPv4Address dst_ip, uint16_t dst_port,
+bool UDPSocket::Send(IPv4Address dst_ip, uint16_t dst_port, uint16_t src_port,
                      uint8_t* data, uint32_t size) {
+    if (size > sizeof(tx_buf) - sizeof(UDPHeader))
+        size = sizeof(tx_buf) - sizeof(UDPHeader);
+
     UDPHeader* hdr  = (UDPHeader*)tx_buf;
-    hdr->src_port   = htons(local_port);
+    hdr->src_port   = htons(src_port);
     hdr->dst_port   = htons(dst_port);
     hdr->length     = htons((uint16_t)(sizeof(UDPHeader) + size));
     hdr->checksum   = 0;

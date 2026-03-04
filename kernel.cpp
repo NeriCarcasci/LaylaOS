@@ -26,6 +26,7 @@
 #include "gui.h"
 #include "terminal.h"
 #include "boot_anim.h"
+#include "port.h"
 
 typedef void (*constructor)();
 extern "C" constructor start_ctors;
@@ -197,14 +198,28 @@ extern "C" void kernelMain(void* multiboot_structure, uint32_t magic)
     pit_data.Write(11932 >> 8);
 
     VGA::EnterGraphicsMode();
+
+    {
+        Port8Bit dac_addr(0x3C8), dac_data(0x3C9);
+        dac_addr.Write(220);
+        dac_data.Write(10);  dac_data.Write(30);  dac_data.Write(10);
+        dac_addr.Write(221);
+        dac_data.Write(63);  dac_data.Write(50);  dac_data.Write(10);
+        dac_addr.Write(222);
+        dac_data.Write(40);  dac_data.Write(40);  dac_data.Write(40);
+        dac_addr.Write(223);
+        dac_data.Write(5);   dac_data.Write(10);  dac_data.Write(20);
+    }
+
     BootAnimation();
-    Desktop desktop(320, 200, Color::DarkGray);
+    Desktop desktop(320, 200, Color::Black);
     Terminal term(0, 0, 320, 200);
     Terminal::SetActive(&term);
     desktop.AddWindow(&term);
     SetActiveDesktop(&desktop);
 
-    term.Print("MyOS ready.\n");
+    term.Print("Frodo OS 1.0 -- One Ring to rule them all\n");
+    term.Print("Type 'help' for available commands.\n\n");
 
     Scheduler scheduler(&interrupts, &tss);
 

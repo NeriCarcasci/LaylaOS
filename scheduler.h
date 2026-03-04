@@ -9,6 +9,8 @@
 // NOTE: no paging — Ring 3 processes share the kernel's flat physical address
 // space. DPL checks and syscall argument validation are the only protection.
 
+extern volatile uint32_t pit_ticks;
+
 class Scheduler {
 public:
     Scheduler(InterruptManager* interrupts, TaskStateSegment* tss);

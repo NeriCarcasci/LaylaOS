@@ -5,13 +5,13 @@
 Terminal* Terminal::active_terminal = nullptr;
 
 Terminal::Terminal(int32_t x, int32_t y, int32_t w, int32_t h)
-    : Window(x, y, w, h, "", Color::Black),
+    : Window(x, y, w, h, "", COL_BG),
       cursor_col(0), cursor_row(0), input_len(0)
 {
     for (int r = 0; r < ROWS; r++)
         for (int c = 0; c < COLS; c++) {
             grid[r][c]   = ' ';
-            colors[r][c] = Color::LightGray;
+            colors[r][c] = COL_TEXT;
         }
     for (int i = 0; i < 256; i++) input_line[i] = 0;
 }
@@ -27,7 +27,7 @@ void Terminal::ScrollUp() {
         }
     for (int c = 0; c < COLS; c++) {
         grid[ROWS - 1][c]   = ' ';
-        colors[ROWS - 1][c] = Color::LightGray;
+        colors[ROWS - 1][c] = COL_TEXT;
     }
     if (cursor_row > 0) cursor_row--;
 }
@@ -47,7 +47,7 @@ void Terminal::Backspace() {
         cursor_col = COLS - 1;
     }
     grid[cursor_row][cursor_col]   = ' ';
-    colors[cursor_row][cursor_col] = Color::LightGray;
+    colors[cursor_row][cursor_col] = COL_TEXT;
 }
 
 void Terminal::PutChar(char c) {
@@ -57,7 +57,7 @@ void Terminal::PutChar(char c) {
         Backspace();
     } else {
         grid[cursor_row][cursor_col]   = c;
-        colors[cursor_row][cursor_col] = Color::LightGray;
+        colors[cursor_row][cursor_col] = COL_TEXT;
         cursor_col++;
         if (cursor_col >= COLS)
             NewLine();
@@ -76,24 +76,42 @@ void Terminal::SetShellOutput(const char* str, uint32_t len) {
     Draw();
 }
 
+void Terminal::DrawHeader() {
+    VGA::DrawRect((uint16_t)x, (uint16_t)y, (uint16_t)w, HEADER_H, COL_HDR_BG);
+
+    const char* title = "FRODO OS";
+    int tx = x + 2;
+    for (int i = 0; title[i]; i++)
+        VGA::DrawChar((uint16_t)(tx + i * 6), (uint16_t)(y + 1), title[i], COL_GOLD, COL_HDR_BG);
+
+    const char* user = "root@ring";
+    int ux = x + w - 9 * 6 - 2;
+    for (int i = 0; user[i]; i++)
+        VGA::DrawChar((uint16_t)(ux + i * 6), (uint16_t)(y + 1), user[i], COL_DIM, COL_HDR_BG);
+
+    VGA::DrawRect((uint16_t)x, (uint16_t)(y + HEADER_H - 1), (uint16_t)w, 1, COL_GOLD);
+}
+
 void Terminal::Draw() {
+    DrawHeader();
+
     for (int r = 0; r < ROWS; r++) {
         for (int c = 0; c < COLS; c++) {
             VGA::DrawChar(
                 (uint16_t)(x + c * 8),
-                (uint16_t)(y + r * 8),
+                (uint16_t)(y + HEADER_H + r * 8),
                 grid[r][c],
                 colors[r][c],
-                Color::Black
+                COL_BG
             );
         }
     }
 
     VGA::DrawRect(
         (uint16_t)(x + cursor_col * 8),
-        (uint16_t)(y + cursor_row * 8),
+        (uint16_t)(y + HEADER_H + cursor_row * 8),
         8, 8,
-        Color::LightGray
+        COL_TEXT
     );
 }
 

@@ -104,8 +104,10 @@ void BootAnimation() {
             if (xo > 0 && xi == 0) put_px(scr, cx, py, col);
         }
 
-        for (volatile uint32_t d = 0; d < 3000000; d++);
+        for (volatile uint32_t d = 0; d < 8000000; d++);
     }
+
+    for (volatile uint32_t h = 0; h < 120000000; h++);
 
     for (uint32_t i = 0; i < 320 * 200; i++) scr[i] = 0;
 }

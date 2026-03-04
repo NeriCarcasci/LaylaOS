@@ -57,6 +57,11 @@ public:
     bool Mount();
     bool ReadFile(const char* path, uint8_t* buffer, uint32_t* size);
     bool ListDirectory(const char* path);
+    bool ListDirectoryToBuffer(const char* path, char* buf, uint32_t* len);
+    bool WriteFile(const char* path, const uint8_t* buffer, uint32_t size);
+    bool DeleteFile(const char* path);
+    bool CreateFile(const char* path);
+    bool MakeDir(const char* path);
 private:
     ATADriver*  ata;
     uint32_t    partition_lba;
@@ -70,6 +75,17 @@ private:
     bool     ReadCluster(uint32_t cluster, uint8_t* buffer);
     bool     FindEntry(uint32_t dir_cluster, const char* name, FAT32DirEntry* out);
     bool     ReadSector(uint32_t lba, uint8_t* buffer);
+    bool     WriteSector(uint32_t lba, const uint8_t* buffer);
+    bool     WriteCluster(uint32_t cluster, const uint8_t* buffer);
+    uint32_t AllocCluster();
+    bool     SetFATEntry(uint32_t cluster, uint32_t value);
+    bool     WriteClusterChain(uint32_t first_cluster, const uint8_t* buf, uint32_t size);
+    bool     AddDirEntry(uint32_t dir_cluster, FAT32DirEntry* entry);
+    bool     MarkEntryDeleted(uint32_t dir_cluster, const char* name83);
+    void     BuildDirEntry(FAT32DirEntry* out, const char* name83,
+                           uint8_t attr, uint32_t cluster, uint32_t size);
+    bool     ResolveParentDir(const char* path,
+                              uint32_t* dir_cluster_out, char component_out[13]);
     static void ToShortName(const char* component, char out[11]);
     static bool NamesMatch(const uint8_t* dir_name, const char* name83);
 };

@@ -93,6 +93,80 @@ static uint32_t sys_waitpid(int pid, int* status, int /*options*/, uint32_t /*es
     return (uint32_t)pid;
 }
 
+static uint32_t sys_open(const char* path, uint32_t flags) {
+    if (!global_fat32) return (uint32_t)-1;
+    uint32_t addr = (uint32_t)path;
+    if (addr < 0x00400000 || addr >= 0x00D00000) return (uint32_t)-1;
+    if (flags == 1)
+        global_fat32->CreateFile(path);
+    return 3;
+}
+
+static uint32_t sys_unlink(const char* path) {
+    if (!global_fat32) return (uint32_t)-1;
+    uint32_t addr = (uint32_t)path;
+    if (addr < 0x00400000 || addr >= 0x00D00000) return (uint32_t)-1;
+    return global_fat32->DeleteFile(path) ? 0 : (uint32_t)-1;
+}
+
+static uint32_t sys_mkdir(const char* path) {
+    if (!global_fat32) return (uint32_t)-1;
+    uint32_t addr = (uint32_t)path;
+    if (addr < 0x00400000 || addr >= 0x00D00000) return (uint32_t)-1;
+    return global_fat32->MakeDir(path) ? 0 : (uint32_t)-1;
+}
+
+static uint32_t sys_ls(const char* path) {
+    if (!global_fat32) return (uint32_t)-1;
+    uint32_t addr = (uint32_t)path;
+    if (addr < 0x00400000 || addr >= 0x00D00000) return (uint32_t)-1;
+    char buf[2048];
+    uint32_t len = 0;
+    if (!global_fat32->ListDirectoryToBuffer(path, buf, &len))
+        return (uint32_t)-1;
+    Terminal* term = Terminal::GetActive();
+    if (term) {
+        term->SetShellOutput(buf, len);
+    } else {
+        for (uint32_t i = 0; i < len; i++) VGA::PutChar(buf[i]);
+    }
+    return 0;
+}
+
+static uint32_t sys_cp(const char* src, const char* dst) {
+    if (!global_fat32) return (uint32_t)-1;
+    if ((uint32_t)src < 0x00400000 || (uint32_t)src >= 0x00D00000) return (uint32_t)-1;
+    if ((uint32_t)dst < 0x00400000 || (uint32_t)dst >= 0x00D00000) return (uint32_t)-1;
+    uint8_t* buf = new uint8_t[65536];
+    if (!buf) return (uint32_t)-1;
+    uint32_t size = 0;
+    if (!global_fat32->ReadFile(src, buf, &size)) {
+        delete[] buf;
+        return (uint32_t)-1;
+    }
+    bool ok = global_fat32->WriteFile(dst, buf, size);
+    delete[] buf;
+    return ok ? 0 : (uint32_t)-1;
+}
+
+static uint32_t sys_mv(const char* src, const char* dst) {
+    if (!global_fat32) return (uint32_t)-1;
+    if ((uint32_t)src < 0x00400000 || (uint32_t)src >= 0x00D00000) return (uint32_t)-1;
+    if ((uint32_t)dst < 0x00400000 || (uint32_t)dst >= 0x00D00000) return (uint32_t)-1;
+    uint8_t* buf = new uint8_t[65536];
+    if (!buf) return (uint32_t)-1;
+    uint32_t size = 0;
+    if (!global_fat32->ReadFile(src, buf, &size)) {
+        delete[] buf;
+        return (uint32_t)-1;
+    }
+    bool ok = global_fat32->WriteFile(dst, buf, size);
+    delete[] buf;
+    if (!ok) return (uint32_t)-1;
+    global_fat32->DeleteFile(src);
+    return 0;
+}
+
 static uint32_t sys_exec(const char* path) {
     if (!path || !global_fat32) return (uint32_t)-1;
 
@@ -133,6 +207,12 @@ uint32_t SyscallDispatch(uint32_t esp) {
     case 4:
         frame->eax = sys_write(frame->ebx, (const void*)frame->ecx, frame->edx);
         break;
+    case 5:
+        frame->eax = sys_open((const char*)frame->ebx, frame->ecx);
+        break;
+    case 6:
+        frame->eax = sys_unlink((const char*)frame->ebx);
+        break;
     case 7:
         frame->eax = sys_waitpid((int)frame->ebx, (int*)frame->ecx, frame->edx, esp);
         break;
@@ -141,6 +221,18 @@ uint32_t SyscallDispatch(uint32_t esp) {
         break;
     case 20:
         frame->eax = sys_getpid();
+        break;
+    case 39:
+        frame->eax = sys_mkdir((const char*)frame->ebx);
+        break;
+    case 89:
+        frame->eax = sys_ls((const char*)frame->ebx);
+        break;
+    case 90:
+        frame->eax = sys_cp((const char*)frame->ebx, (const char*)frame->ecx);
+        break;
+    case 91:
+        frame->eax = sys_mv((const char*)frame->ebx, (const char*)frame->ecx);
         break;
     case 88:
         __asm__ volatile("out %0, $0x64" : : "a"((uint8_t)0xFE));

@@ -2,12 +2,14 @@
 #include "paging.h"
 
 Scheduler* Scheduler::instance = nullptr;
+volatile uint32_t pit_ticks = 0;
 
 class SchedulerTimer : public InterruptHandler {
 public:
     SchedulerTimer(InterruptManager* mgr)
         : InterruptHandler(32, mgr) {}
     uint32_t HandleInterrupt(uint32_t esp) override {
+        pit_ticks++;
         return Scheduler::GetInstance()->Schedule(esp);
     }
 };

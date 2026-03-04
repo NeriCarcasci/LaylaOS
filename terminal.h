@@ -16,9 +16,16 @@ public:
     static Terminal* GetActive();
     static void      SetActive(Terminal* t);
 
+    static const uint8_t COL_BG     = 0;
+    static const uint8_t COL_TEXT   = 220;
+    static const uint8_t COL_GOLD   = 221;
+    static const uint8_t COL_DIM    = 222;
+    static const uint8_t COL_HDR_BG = 223;
+
 private:
-    static const int COLS = 40;
-    static const int ROWS = 25;
+    static const int COLS     = 40;
+    static const int ROWS     = 23;
+    static const int HEADER_H = 10;
 
     char    grid[ROWS][COLS];
     uint8_t colors[ROWS][COLS];
@@ -32,6 +39,7 @@ private:
     void ScrollUp();
     void NewLine();
     void Backspace();
+    void DrawHeader();
 };
 
 #endif

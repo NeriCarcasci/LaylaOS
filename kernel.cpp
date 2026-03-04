@@ -27,6 +27,9 @@
 #include "terminal.h"
 #include "boot_anim.h"
 #include "port.h"
+#include "syscall.h"
+#include "net_hooks.h"
+#include "net_shared.h"
 
 typedef void (*constructor)();
 extern "C" constructor start_ctors;
@@ -61,6 +64,13 @@ extern "C" uint32_t _binary_shell_program_bin_size;
 static uint32_t pmm_bitmap[32768];
 
 FAT32* global_fat32 = nullptr;
+RTL8139Driver* global_nic = nullptr;
+UDPSocket* global_udp = nullptr;
+TCPSocket* global_tcp = nullptr;
+IPv4Handler* global_ipv4 = nullptr;
+
+static ARPHandler* global_arp = nullptr;
+static ICMPHandler* global_icmp = nullptr;
 
 extern "C" void kernelMain(void* multiboot_structure, uint32_t magic)
 {
@@ -168,28 +178,33 @@ extern "C" void kernelMain(void* multiboot_structure, uint32_t magic)
         }
     }
 
+    global_nic = nic;
     if (nic) {
         IPv4Address local_ip = IPv4Address::FromBytes(10, 0, 2, 15);
 
-        ARPHandler  arp(nic, local_ip);
-        IPv4Handler ipv4(nic, &arp, local_ip);
-        ICMPHandler icmp(&ipv4);
-        UDPSocket   udp(&ipv4, 1234);
-        TCPSocket   tcp(&ipv4, 1234);
+        global_arp  = new ARPHandler(nic, local_ip);
+        global_ipv4 = new IPv4Handler(nic, global_arp, local_ip);
+        global_icmp = new ICMPHandler(global_ipv4);
+        global_udp  = new SyscallUDPSocket(global_ipv4, 1234);
+        global_tcp  = new SyscallTCPSocket(global_ipv4, 1234);
 
-        nic->RegisterHandler(ETHERTYPE_ARP,  &arp);
-        nic->RegisterHandler(ETHERTYPE_IPV4, &ipv4);
-        ipv4.RegisterHandler(IPV4_PROTO_ICMP, &icmp);
-        ipv4.RegisterHandler(IPV4_PROTO_UDP,  &udp);
-        ipv4.RegisterHandler(IPV4_PROTO_TCP,  &tcp);
+        nic->RegisterHandler(ETHERTYPE_ARP,  global_arp);
+        nic->RegisterHandler(ETHERTYPE_IPV4, global_ipv4);
+        global_ipv4->RegisterHandler(IPV4_PROTO_ICMP, global_icmp);
+        global_ipv4->RegisterHandler(IPV4_PROTO_UDP,  global_udp);
+        global_ipv4->RegisterHandler(IPV4_PROTO_TCP,  global_tcp);
 
-        arp.SendRequest(IPv4Address::FromBytes(10, 0, 2, 2));
+        global_arp->SendRequest(IPv4Address::FromBytes(10, 0, 2, 2));
     }
 
     uint8_t* load_addr = (uint8_t*)0x00400000;
     uint32_t prog_size = (uint32_t)&_binary_shell_program_bin_size;
     for (uint32_t i = 0; i < prog_size; i++)
         load_addr[i] = _binary_shell_program_bin_start[i];
+
+    uint8_t* net_shared = (uint8_t*)NET_SHARED_BASE;
+    for (uint32_t i = 0; i < 4096; i++)
+        net_shared[i] = 0;
 
     Port8Bit pit_cmd(0x43);
     Port8Bit pit_data(0x40);

@@ -1,9 +1,53 @@
 #include "fat32.h"
 #include "vga.h"
+#include "terminal.h"
 
 static void fat_mem_copy(uint8_t* dst, const uint8_t* src, uint32_t n) {
     for (uint32_t i = 0; i < n; i++)
         dst[i] = src[i];
+}
+
+static void fat_output_flush(Terminal* term, char* out, uint32_t* pos) {
+    if (*pos == 0) return;
+    if (term) {
+        term->SetShellOutput(out, *pos);
+    } else {
+        for (uint32_t i = 0; i < *pos; i++)
+            VGA::PutChar(out[i]);
+    }
+    *pos = 0;
+}
+
+static void fat_output_char(Terminal* term, char* out, uint32_t* pos,
+                            uint32_t cap, char c) {
+    if (*pos >= cap)
+        fat_output_flush(term, out, pos);
+    out[(*pos)++] = c;
+}
+
+static void fat_output_str(Terminal* term, char* out, uint32_t* pos,
+                           uint32_t cap, const char* s) {
+    for (uint32_t i = 0; s[i] != '\0'; i++)
+        fat_output_char(term, out, pos, cap, s[i]);
+}
+
+static void fat_output_u32(Terminal* term, char* out, uint32_t* pos,
+                           uint32_t cap, uint32_t value) {
+    char digits[10];
+    uint32_t d = 0;
+
+    if (value == 0) {
+        fat_output_char(term, out, pos, cap, '0');
+        return;
+    }
+
+    while (value > 0 && d < 10) {
+        digits[d++] = (char)('0' + (value % 10));
+        value /= 10;
+    }
+
+    while (d > 0)
+        fat_output_char(term, out, pos, cap, digits[--d]);
 }
 
 FAT32::FAT32(ATADriver* ata, MBRPartitionEntry* partition)
@@ -472,6 +516,7 @@ bool FAT32::ListDirectoryToBuffer(const char* path, char* buf, uint32_t* len) {
 bool FAT32::ListDirectory(const char* path) {
     uint32_t dir_cluster = bpb.root_cluster;
     FAT32DirEntry entry;
+    Terminal* term = Terminal::GetActive();
 
     int i = 0;
     if (path[0] == '/') i++;
@@ -491,31 +536,77 @@ bool FAT32::ListDirectory(const char* path) {
 
     uint8_t cluster_buf[4096];
     uint32_t cluster = dir_cluster;
+    uint32_t rendered = 0;
+    bool done = false;
 
-    while (cluster < 0x0FFFFFF8) {
+    char out[256];
+    uint32_t out_pos = 0;
+
+    while (cluster < 0x0FFFFFF8 && !done) {
         ReadCluster(cluster, cluster_buf);
         uint32_t entries_per_cluster = cluster_size / 32;
         FAT32DirEntry* entries = (FAT32DirEntry*)cluster_buf;
 
         for (uint32_t j = 0; j < entries_per_cluster; j++) {
-            if (entries[j].name[0] == 0x00) return true;
-            if (entries[j].name[0] == 0xE5) continue;
+            if (entries[j].name[0] == 0x00) {
+                done = true;
+                break;
+            }
+            if (entries[j].name[0] == (uint8_t)0xE5) continue;
             if (entries[j].attributes == 0x0F) continue;
+            if (entries[j].name[0] == 0x2E) continue;
+
+            bool is_dir = (entries[j].attributes & 0x10) != 0;
+            uint32_t name_len = 0;
 
             for (int k = 0; k < 8; k++) {
-                if (entries[j].name[k] != ' ')
-                    VGA::PutChar((char)entries[j].name[k]);
-            }
-            if (entries[j].ext[0] != ' ') {
-                VGA::PutChar('.');
-                for (int k = 0; k < 3; k++) {
-                    if (entries[j].ext[k] != ' ')
-                        VGA::PutChar((char)entries[j].ext[k]);
+                if (entries[j].name[k] != ' ') {
+                    fat_output_char(term, out, &out_pos, sizeof(out), (char)entries[j].name[k]);
+                    name_len++;
                 }
             }
-            VGA::Print("  ");
+
+            if (entries[j].ext[0] != ' ') {
+                fat_output_char(term, out, &out_pos, sizeof(out), '.');
+                name_len++;
+                for (int k = 0; k < 3; k++) {
+                    if (entries[j].ext[k] != ' ') {
+                        fat_output_char(term, out, &out_pos, sizeof(out), (char)entries[j].ext[k]);
+                        name_len++;
+                    }
+                }
+            }
+
+            if (is_dir) {
+                fat_output_char(term, out, &out_pos, sizeof(out), '/');
+                name_len++;
+            }
+
+            while (name_len < 13) {
+                fat_output_char(term, out, &out_pos, sizeof(out), ' ');
+                name_len++;
+            }
+
+            if (is_dir) {
+                fat_output_str(term, out, &out_pos, sizeof(out), "<DIR>");
+            } else {
+                fat_output_u32(term, out, &out_pos, sizeof(out), entries[j].size);
+            }
+
+            rendered++;
+            if ((rendered & 1) == 0) {
+                fat_output_char(term, out, &out_pos, sizeof(out), '\n');
+            } else {
+                fat_output_char(term, out, &out_pos, sizeof(out), ' ');
+                fat_output_char(term, out, &out_pos, sizeof(out), ' ');
+            }
         }
         cluster = NextCluster(cluster);
     }
+
+    if ((rendered & 1) != 0)
+        fat_output_char(term, out, &out_pos, sizeof(out), '\n');
+
+    fat_output_flush(term, out, &out_pos);
     return true;
 }
